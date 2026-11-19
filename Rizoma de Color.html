@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rizoma de Color</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: menú lateral fijo + lienzo de contenido; cada sección es un nodo del hipertexto */
+  --paper:#f6f7fb;
+  --surface:#ffffff;
+  --ink:#16182b;
+  --muted:#585d78;
+  --line:#dfe2ee;
+  --accent:#2f3bd6;
+  --accent-soft:#e7e9ff;
+  --warn:#fff3c4;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#11131f; --surface:#1a1d2e; --ink:#eceefa; --muted:#a7abc6; --line:#2d3150;
+    --accent:#8f98ff; --accent-soft:#262b52; --warn:#4a4120; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11131f; --surface:#1a1d2e; --ink:#eceefa; --muted:#a7abc6; --line:#2d3150;
+  --accent:#8f98ff; --accent-soft:#262b52; --warn:#4a4120; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.55}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,label:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);line-height:1.15;text-wrap:balance;margin:0 0 .5em}
+h1{font-size:clamp(2rem,4.5vw,3.1rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.8rem;font-weight:700;letter-spacing:-.01em}
+h3{font-size:1.2rem;font-weight:700}
+p{margin:0 0 .9em;max-width:68ch}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100%}
+nav.side{position:sticky;top:0;height:100vh;overflow:auto;background:var(--surface);border-right:1px solid var(--line);padding:22px 16px}
+.brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+.brand canvas{width:42px;height:42px}
+.brand b{font-family:var(--font-display);font-size:1.15rem;line-height:1.1}
+.brand small{display:block;color:var(--muted);font-size:.8rem}
+nav.side ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+nav.side a{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:.95rem}
+nav.side a .dot{width:10px;height:10px;border-radius:50%;flex:none}
+nav.side a:hover{background:var(--accent-soft)}
+nav.side a[aria-current="page"]{background:var(--accent-soft);font-weight:700}
+nav.side .grp{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 10px 4px}
+.menu-btn{display:none}
+main{padding:36px clamp(16px,4vw,56px) 80px;min-width:0}
+section.view{display:none;max-width:1000px}
+section.view.on{display:block}
+.eyebrow{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.lead{font-size:1.15rem;color:var(--muted)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h3{margin-bottom:.35em}
+.card p:last-child{margin-bottom:0}
+.stripe{border-top:6px solid var(--c,var(--accent))}
+.chip{display:inline-block;font-size:.78rem;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--ink);margin:0 4px 4px 0}
+.pending{background:var(--warn);border-radius:6px;padding:1px 6px;font-size:.9rem}
+.btn{font:inherit;font-weight:700;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.nodes a{text-decoration:none}
+.node{display:block;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--ink);transition:transform .15s}
+.node:hover{transform:translateY(-2px);border-color:var(--accent)}
+.node b{font-family:var(--font-display);display:block;font-size:1.05rem}
+.node span{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+.tw{overflow-x:auto}
+th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+th{font-family:var(--font-display);font-size:.9rem;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tpbar{display:flex;height:34px;border-radius:8px;overflow:hidden;margin:10px 0 18px}
+.tpbar div{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:700;font-family:var(--font-display)}
+/* Rueda */
+.wheel-wrap{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:22px;align-items:start}
+#wheel{width:100%;height:auto;display:block}
+#wheel path{cursor:pointer;stroke:var(--paper);stroke-width:2;transition:transform .15s}
+#wheel path:hover,#wheel path.sel{transform:scale(1.04)}
+#wheel path:focus-visible{outline:none;stroke:var(--ink);stroke-width:4}
+.panel-sw{width:100%;height:70px;border-radius:10px;margin-bottom:12px;border:1px solid var(--line)}
+.levels{display:grid;gap:10px}
+.lvl{border-left:4px solid var(--accent);padding:4px 0 4px 12px}
+.lvl h4{margin:0;font-family:var(--font-display);font-size:.95rem}
+.lvl p{margin:2px 0 0;font-size:.95rem}
+.links-row button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 10px 4px 6px;margin:0 6px 6px 0;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.links-row i{width:14px;height:14px;border-radius:50%;display:inline-block}
+/* Laboratorio */
+.mix{position:relative;height:240px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.mix.light{background:#000}
+.mix.pig{background:#fff}
+.mix span{position:absolute;width:140px;height:140px;border-radius:50%;transition:opacity .2s}
+.mix.light span{mix-blend-mode:screen}
+.mix.pig span{mix-blend-mode:multiply}
+.mix span:nth-child(1){left:calc(50% - 110px);top:20px}
+.mix span:nth-child(2){left:calc(50% - 30px);top:20px}
+.mix span:nth-child(3){left:calc(50% - 70px);top:85px}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.toggles label{display:flex;gap:6px;align-items:center;font-size:.92rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+.slider{display:grid;grid-template-columns:110px 1fr 54px;gap:10px;align-items:center;margin:6px 0}
+.slider output{font-variant-numeric:tabular-nums;text-align:right}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.big-sw{height:120px;border-radius:12px;border:1px solid var(--line)}
+.swrow{display:flex;gap:8px;flex-wrap:wrap}
+.sw{flex:1 1 90px;min-height:84px;border-radius:10px;display:flex;align-items:flex-end;padding:8px;font-size:.8rem;font-weight:700;border:1px solid var(--line)}
+.sim-row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;margin:6px 0}
+.sim-row .swrow{gap:0;border-radius:8px;overflow:hidden}
+.sim-row .swrow div{flex:1;height:38px}
+select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+/* Sesiones */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.sess{display:none}
+.sess.on{display:block}
+ul.clean{padding-left:1.1em;margin:.3em 0 .8em}
+ul.clean li{margin-bottom:.3em}
+/* Reto */
+.q{margin-bottom:16px}
+.opts{display:grid;gap:6px;margin-top:8px}
+.opts button{font:inherit;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 12px;cursor:pointer}
+.opts button.ok{border-color:#1f8a4c;background:#e3f6ea;color:#123d24}
+.opts button.no{border-color:#c0392b;background:#fbe6e3;color:#4d140f}
+.fb{font-size:.92rem;margin-top:6px;color:var(--muted)}
+.score{font-family:var(--font-display);font-size:1.3rem;font-weight:700}
+.check label{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.check select{margin-left:auto}
+textarea{width:100%;min-height:90px;font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px}
+footer{color:var(--muted);font-size:.85rem;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* Videoteca y biblioteca */
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 16px}
+.filters button{font:inherit;font-size:.88rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.vcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.vthumb{position:relative;aspect-ratio:16/9;background:var(--g);display:flex;align-items:flex-end;padding:10px;color:#fff;font-weight:700;font-size:.85rem}
+.vthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vthumb span{position:relative;background:rgba(0,0,0,.55);border-radius:6px;padding:2px 8px}
+.vthumb iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vbody{padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.vbody h3{font-size:1rem;margin:0}
+.vmeta{font-size:.82rem;color:var(--muted)}
+.vq{font-size:.9rem;border-left:3px solid var(--accent);padding-left:8px}
+.vact{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:6px}
+.vact a.btn{text-decoration:none;font-size:.88rem;padding:6px 12px}
+.vact label{font-size:.85rem;display:flex;gap:5px;align-items:center;cursor:pointer}
+.prog{height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:6px 0 4px}
+.prog div{height:100%;background:var(--accent);width:0;transition:width .3s}
+.src{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.src:last-child{border-bottom:0}
+.src .tag{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:6px;background:var(--accent-soft);white-space:nowrap}
+.src a{font-weight:700}
+.src p{grid-column:2;margin:0;font-size:.9rem;color:var(--muted)}
+.mini{list-style:none;padding:0;margin:.3em 0 .8em;display:grid;gap:6px}
+.mini li{display:flex;gap:8px;align-items:flex-start;font-size:.93rem}
+.mini li i{flex:none;width:22px;height:16px;border-radius:4px;background:#e1262b;position:relative;top:3px}
+.mini li i::after{content:"";position:absolute;left:8px;top:4px;border-left:7px solid #fff;border-top:4px solid transparent;border-bottom:4px solid transparent}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  nav.side ol{display:none}
+  nav.side.open ol{display:flex}
+  .menu-btn{display:inline-block;margin-left:auto}
+  .wheel-wrap{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="f-prot"><feColorMatrix type="matrix" values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/></filter>
+  <filter id="f-deut"><feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter>
+  <filter id="f-trit"><feColorMatrix type="matrix" values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/></filter>
+</svg>
+<div class="app">
+<nav class="side" id="side" aria-label="Menú del curso">
+  <div class="brand"><canvas id="logo" width="84" height="84" aria-hidden="true"></canvas><div><b>Rizoma de Color</b><small>Teoría del color · Grado 9°</small></div><button class="btn ghost menu-btn" id="menuBtn" aria-expanded="false">Menú</button></div>
+  <ol>
+    <li class="grp">Empezar</li>
+    <li><a href="#inicio"><i class="dot" style="background:#f4c20d"></i>Inicio y mapa</a></li>
+    <li><a href="#plan"><i class="dot" style="background:#f28c1b"></i>Plan del curso</a></li>
+    <li class="grp">Aprender</li>
+    <li><a href="#sesiones"><i class="dot" style="background:#e1262b"></i>Las 4 sesiones</a></li>
+    <li><a href="#rueda"><i class="dot" style="background:#8e2a8b"></i>Rueda hipertextual</a></li>
+    <li><a href="#laboratorio"><i class="dot" style="background:#2c3f9e"></i>Laboratorio</a></li>
+    <li><a href="#reto"><i class="dot" style="background:#1b8a8f"></i>Reto transdisciplinar</a></li>
+    <li><a href="#videoteca"><i class="dot" style="background:#e1262b"></i>Videoteca</a></li>
+    <li><a href="#biblioteca"><i class="dot" style="background:#8e2a8b"></i>Biblioteca de fuentes</a></li>
+    <li class="grp">Construir juntos</li>
+    <li><a href="#comunidad"><i class="dot" style="background:#2a9b48"></i>Comunidad y bitácora</a></li>
+    <li><a href="#evaluacion"><i class="dot" style="background:#8cc63f"></i>Evaluación</a></li>
+    <li><a href="#metacognicion"><i class="dot" style="background:#f4c20d"></i>Mi proceso</a></li>
+    <li class="grp">Fundamentar</li>
+    <li><a href="#fundamentos"><i class="dot" style="background:#585d78"></i>Fundamentos</a></li>
+    <li><a href="#recursos"><i class="dot" style="background:#585d78"></i>Recursos y referencias</a></li>
+  </ol>
+</nav>
+<main>
+
+<!-- INICIO -->
+<section class="view" id="v-inicio">
+  <p class="eyebrow">Recurso hipermedia de apoyo al plan curricular · Primer periodo</p>
+  <h1>El color es luz, ojo, cultura y código. Vamos a descubrirlo juntos.</h1>
+  <p class="lead">Este sitio acompaña las cuatro sesiones de Teoría del color de grado noveno. Aquí encuentras la rueda cromática hipertextual, un laboratorio para experimentar, los trabajos prácticos y tu bitácora. Cada página está enlazada con las demás: puedes recorrerla en el orden que quieras.</p>
+  <h2 style="margin-top:28px">Mapa del sitio</h2>
+  <p>Cada tarjeta es un nodo. Elige por dónde entrar.</p>
+  <div class="grid g3 nodes">
+    <a class="node" href="#sesiones" style="border-top:5px solid #e1262b"><b>Las 4 sesiones</b><span>Contenidos, recursos y el trabajo práctico de cada semana.</span></a>
+    <a class="node" href="#rueda" style="border-top:5px solid #8e2a8b"><b>Rueda hipertextual</b><span>Toca un color y explora su física, su percepción, su cultura y su código digital.</span></a>
+    <a class="node" href="#laboratorio" style="border-top:5px solid #2c3f9e"><b>Laboratorio</b><span>Mezcla luz y pigmento, ajusta matiz, saturación y luminosidad, crea armonías.</span></a>
+    <a class="node" href="#reto" style="border-top:5px solid #1b8a8f"><b>Reto transdisciplinar</b><span>Ocho preguntas que cruzan arte, ciencias, cultura y tecnología.</span></a>
+    <a class="node" href="#videoteca" style="border-top:5px solid #e1262b"><b>Videoteca</b><span>Videos seleccionados por sesión y por campo, con una pregunta guía para cada uno.</span></a>
+    <a class="node" href="#biblioteca" style="border-top:5px solid #8e2a8b"><b>Biblioteca de fuentes</b><span>Simuladores, herramientas, documentos oficiales y fuentes del patrimonio de Nariño.</span></a>
+    <a class="node" href="#comunidad" style="border-top:5px solid #2a9b48"><b>Comunidad y bitácora</b><span>Roles de curaduría, aula virtual y el mural colectivo.</span></a>
+    <a class="node" href="#metacognicion" style="border-top:5px solid #f4c20d"><b>Mi proceso</b><span>Autoevaluación y preguntas para pensar sobre cómo aprendo.</span></a>
+  </div>
+  <h2 style="margin-top:32px">El recorrido del periodo</h2>
+  <p>Los cuatro trabajos prácticos se encadenan: cada uno usa lo que hiciste en el anterior y todos terminan en el mural colectivo.</p>
+  <div class="grid g4">
+    <div class="card stripe" style="--c:#f4c20d"><p class="eyebrow">Sesión 1 · 20 %</p><h3>TP1 · Rueda y mapa del entorno</h3><p>Construimos la rueda cromática y buscamos los colores de Pasto.</p></div>
+    <div class="card stripe" style="--c:#e1262b"><p class="eyebrow">Sesión 2 · 20 %</p><h3>TP2 · Composición y paleta accesible</h3><p>Aplicamos matiz, saturación y luminosidad pensando en todas las miradas.</p></div>
+    <div class="card stripe" style="--c:#2c3f9e"><p class="eyebrow">Sesión 3 · 20 %</p><h3>TP3 · Juego co-diseñado</h3><p>Creamos en equipo un juego sobre armonías y contrastes.</p></div>
+    <div class="card stripe" style="--c:#2a9b48"><p class="eyebrow">Sesión 4 · 40 %</p><h3>TP4 · Mural colaborativo</h3><p>“El color comunica, transforma y crea”: lo socializamos con la comunidad.</p></div>
+  </div>
+</section>
+
+<!-- PLAN -->
+<section class="view" id="v-plan">
+  <p class="eyebrow">Plan del curso</p>
+  <h2>Teoría del color: el color como saber colectivo y transdisciplinar</h2>
+  <div class="tw"><table>
+    <tr><th>Área</th><td>Educación Artística y Cultural</td></tr>
+    <tr><th>Grado</th><td>Noveno (9°) · Educación Básica Secundaria</td></tr>
+    <tr><th>Modalidad</th><td>Híbrida: sesiones presenciales + aula virtual</td></tr>
+    <tr><th>Duración</th><td>4 sesiones de 2 horas + trabajo autónomo y colaborativo</td></tr>
+    <tr><th>Campos que se cruzan</th><td><span class="chip">Artes visuales</span><span class="chip">Física de la luz</span><span class="chip">Biología de la visión</span><span class="chip">Ciencias Sociales</span><span class="chip">Tecnología</span></td></tr>
+    <tr><th>Docente</th><td>Aura Calvache Díaz · Fundación María E Nazareth, Pasto</td></tr>
+    <tr><th>Plan completo</th><td><span class="pending">Enlace pendiente: plan curricular hipertextualizado</span></td></tr>
+  </table></div>
+  <h3 style="margin-top:24px">Horizonte de formación</h3>
+  <p><i>Fortalecer las capacidades creativas, expresivas y comunicativas de los estudiantes de grado noveno mediante la comprensión del color como un fenómeno que atraviesa la física, la biología, la cultura, la tecnología y el arte, para que, a través de la experimentación y la creación colectiva, utilicen el color como medio de expresión y transformación de su entorno.</i></p>
+  <h3>Competencia general</h3>
+  <p>Comprender y aplicar los fundamentos de la teoría del color, relacionando sus dimensiones física, perceptiva, cultural y tecnológica, para crear composiciones individuales y colectivas que comuniquen ideas, emociones y mensajes sobre el entorno.</p>
+  <div class="grid g3">
+    <div class="card stripe" style="--c:#e1262b"><h3>Saber</h3><ul class="clean"><li>Categorías cromáticas y rueda.</li><li>Matiz, saturación, luminosidad.</li><li>Luz frente a pigmento.</li><li>Símbolos culturales del color.</li></ul></div>
+    <div class="card stripe" style="--c:#2c3f9e"><h3>Saber hacer</h3><ul class="clean"><li>Mezclar y obtener tonalidades.</li><li>Componer con armonías y contrastes.</li><li>Analizar obras y manifestaciones.</li><li>Diseñar paletas digitales.</li></ul></div>
+    <div class="card stripe" style="--c:#f4c20d"><h3>Ser</h3><ul class="clean"><li>Sensibilidad estética.</li><li>Construcción colectiva y respeto.</li><li>Valoración de los saberes locales.</li><li>Reflexión sobre el propio proceso.</li></ul></div>
+  </div>
+  <p style="margin-top:16px">¿Quieres ver cómo se aplica? Ve a <a href="#sesiones">las sesiones</a> o explora la <a href="#rueda">rueda hipertextual</a>.</p>
+</section>
+
+<!-- SESIONES -->
+<section class="view" id="v-sesiones">
+  <p class="eyebrow">Plan temático</p>
+  <h2>Las cuatro sesiones</h2>
+  <div class="tabs" role="tablist" aria-label="Sesiones">
+    <button role="tab" aria-selected="true" data-s="1">Sesión 1</button>
+    <button role="tab" aria-selected="false" data-s="2">Sesión 2</button>
+    <button role="tab" aria-selected="false" data-s="3">Sesión 3</button>
+    <button role="tab" aria-selected="false" data-s="4">Sesión 4</button>
+  </div>
+  <div class="sess on" id="s1"><div class="grid g2">
+    <div class="card stripe" style="--c:#f4c20d"><p class="eyebrow">Fundamentos de la teoría del color</p><h3>¿De dónde viene el color?</h3>
+      <ul class="clean"><li>El color como fenómeno de luz, ojo y cultura.</li><li>Colores primarios, secundarios y terciarios.</li><li>Mezcla de luz (aditiva) y mezcla de pigmento (sustractiva).</li><li>La rueda cromática.</li><li>Los colores de mi entorno: Carnaval, mercado y naturaleza.</li></ul>
+      <p><b>Pregunta transdisciplinar:</b> si la luz blanca tiene todos los colores, ¿por qué la mezcla de todas las pinturas da un color oscuro?</p></div>
+    <div class="card"><h3>Recursos</h3><ul class="clean"><li><a href="https://phet.colorado.edu/es/simulations/color-vision">Simulador PhET “Visión del color”</a></li><li><a href="#laboratorio">Laboratorio: luz frente a pigmento</a></li><li><a href="#rueda">Rueda hipertextual</a></li><li><a href="https://ich.unesco.org/es/RL/carnaval-de-negros-y-blancos-00287">Carnaval de Negros y Blancos (UNESCO)</a></li></ul>
+      <h3>TP1 · Rueda cromática colectiva y mapa del entorno</h3><p>En equipos de cuatro, construyan la rueda y publiquen en el aula virtual fotos de tres lugares o manifestaciones de su entorno. Ubiquen cada color en la rueda y anoten su origen y su significado.</p></div>
+  </div>
+    <div class="card" style="grid-column:1/-1"><div class="grid g2"><div><h3>Videos de la sesión</h3><ul class="mini" id="sv1"></ul></div><div><h3>Para profundizar</h3><ul class="clean" id="sf1"></ul></div></div><p style="font-size:.9rem;margin:0">Ver todo en la <a href="#videoteca">videoteca</a> y la <a href="#biblioteca">biblioteca de fuentes</a>.</p></div>
+  </div>
+  <div class="sess" id="s2"><div class="grid g2">
+    <div class="card stripe" style="--c:#e1262b"><p class="eyebrow">Propiedades básicas del color</p><h3>Matiz, saturación y luminosidad</h3>
+      <ul class="clean"><li>Las tres propiedades del color.</li><li>Escalas cromáticas; colores cálidos y fríos.</li><li>Cómo vemos: conos del ojo y daltonismo.</li><li>Contraste simultáneo (Albers): un color cambia según lo que lo rodea.</li></ul>
+      <p><b>Pregunta transdisciplinar:</b> ¿una paleta es “bonita” si una parte del curso no puede distinguir sus colores?</p></div>
+    <div class="card"><h3>Recursos</h3><ul class="clean"><li><a href="#laboratorio">Laboratorio: propiedades y simulador de daltonismo</a></li><li><a href="https://color.adobe.com/es/create/color-wheel">Adobe Color</a></li></ul>
+      <h3>TP2 · Composición, narrativa y paleta accesible</h3><p>Crea una composición a partir de un color de tu mapa del TP1. Revisa tu paleta con el simulador, escribe media página explicando tus decisiones y comenta el trabajo de dos compañeros.</p></div>
+  </div>
+    <div class="card" style="grid-column:1/-1"><div class="grid g2"><div><h3>Videos de la sesión</h3><ul class="mini" id="sv2"></ul></div><div><h3>Para profundizar</h3><ul class="clean" id="sf2"></ul></div></div><p style="font-size:.9rem;margin:0">Ver todo en la <a href="#videoteca">videoteca</a> y la <a href="#biblioteca">biblioteca de fuentes</a>.</p></div>
+  </div>
+  <div class="sess" id="s3"><div class="grid g2">
+    <div class="card stripe" style="--c:#2c3f9e"><p class="eyebrow">La rueda y las relaciones del color</p><h3>Armonías, contrastes y códigos</h3>
+      <ul class="clean"><li>Armonías: complementarios, análogos, triádicos.</li><li>Los contrastes de Itten.</li><li>El color digital: códigos RGB y HEX.</li><li>Los colores del Barniz de Pasto mopa-mopa.</li></ul>
+      <p><b>Pregunta transdisciplinar:</b> ¿qué tienen en común un artesano del barniz y un diseñador que elige un código HEX?</p></div>
+    <div class="card"><h3>Recursos</h3><ul class="clean"><li><a href="#laboratorio">Laboratorio: generador de armonías</a></li><li><a href="https://ich.unesco.org/es/USL/01599">Barniz de Pasto mopa-mopa (UNESCO)</a></li><li><a href="https://www.canva.com">Canva</a></li></ul>
+      <h3>TP3 · Juego didáctico co-diseñado</h3><p>En equipo, diseñen un juego (clasificador, trivia o memoria) con al menos un reto de arte, física, biología, cultura y tecnología. Guarden los prompts si usan IA. Luego intercambien los juegos entre equipos.</p></div>
+  </div>
+    <div class="card" style="grid-column:1/-1"><div class="grid g2"><div><h3>Videos de la sesión</h3><ul class="mini" id="sv3"></ul></div><div><h3>Para profundizar</h3><ul class="clean" id="sf3"></ul></div></div><p style="font-size:.9rem;margin:0">Ver todo en la <a href="#videoteca">videoteca</a> y la <a href="#biblioteca">biblioteca de fuentes</a>.</p></div>
+  </div>
+  <div class="sess" id="s4"><div class="grid g2">
+    <div class="card stripe" style="--c:#2a9b48"><p class="eyebrow">Combinaciones y creación colectiva</p><h3>El mural: el color comunica, transforma y crea</h3>
+      <ul class="clean"><li>Armonía, contraste y comunicación visual.</li><li>Co-diseño del mural sobre una problemática ambiental, social o cultural.</li><li>Socialización ante la comunidad educativa.</li><li>Reflexión sobre el proceso colectivo.</li></ul>
+      <p><b>Pregunta transdisciplinar:</b> ¿cuándo un saber construido entre todos se vuelve válido para la comunidad?</p></div>
+    <div class="card"><h3>Recursos</h3><ul class="clean"><li><a href="https://genially.com">Genially</a> o Canva para la versión interactiva del mural</li><li><a href="#comunidad">Roles y bitácora</a></li><li><a href="#metacognicion">Mi proceso</a></li></ul>
+      <h3>TP4 · Mural colaborativo + socialización</h3><p>Cada equipo aporta un sector con su paleta y lo aprendido en el juego. Publiquen la foto del mural con puntos interactivos que enlacen a la bitácora y completen la autoevaluación.</p></div>
+  </div>
+    <div class="card" style="grid-column:1/-1"><div class="grid g2"><div><h3>Videos de la sesión</h3><ul class="mini" id="sv4"></ul></div><div><h3>Para profundizar</h3><ul class="clean" id="sf4"></ul></div></div><p style="font-size:.9rem;margin:0">Ver todo en la <a href="#videoteca">videoteca</a> y la <a href="#biblioteca">biblioteca de fuentes</a>.</p></div>
+  </div>
+</section>
+
+<!-- RUEDA -->
+<section class="view" id="v-rueda">
+  <p class="eyebrow">Hipertexto y transdisciplinariedad</p>
+  <h2>La rueda cromática hipertextual</h2>
+  <p>Cada color es un nodo. Al tocarlo verás cuatro niveles de realidad y los enlaces a sus colores relacionados. Sigue los enlaces y arma tu propio recorrido.</p>
+  <div class="wheel-wrap">
+    <svg id="wheel" viewBox="-200 -200 400 400" role="group" aria-label="Rueda cromática de 12 colores"></svg>
+    <div class="card" id="panel" aria-live="polite"></div>
+  </div>
+  <p style="margin-top:16px;font-size:.92rem;color:var(--muted)">Rueda tradicional de 12 colores (Itten), usada en el trabajo con pigmentos. Los códigos HEX son aproximaciones para pantalla. Los significados culturales cambian de una comunidad a otra: compáralos con lo que encuentres en tu entorno.</p>
+</section>
+
+<!-- LABORATORIO -->
+<section class="view" id="v-laboratorio">
+  <p class="eyebrow">Experimentar</p>
+  <h2>Laboratorio del color</h2>
+  <div class="grid g2">
+    <div class="card"><h3>1 · Mezcla de luz (aditiva)</h3><div class="mix light" id="mixL"><span style="background:#ff0000"></span><span style="background:#00ff00"></span><span style="background:#0000ff"></span></div>
+      <div class="toggles" id="togL"><label><input type="checkbox" checked data-i="0"> Rojo</label><label><input type="checkbox" checked data-i="1"> Verde</label><label><input type="checkbox" checked data-i="2"> Azul</label></div>
+      <p style="margin-top:10px;font-size:.93rem">Así funcionan las pantallas: sumar luces da colores más claros, hasta llegar al blanco.</p></div>
+    <div class="card"><h3>2 · Mezcla de pigmento (sustractiva)</h3><div class="mix pig" id="mixP"><span style="background:#00ffff"></span><span style="background:#ff00ff"></span><span style="background:#ffff00"></span></div>
+      <div class="toggles" id="togP"><label><input type="checkbox" checked data-i="0"> Cian</label><label><input type="checkbox" checked data-i="1"> Magenta</label><label><input type="checkbox" checked data-i="2"> Amarillo</label></div>
+      <p style="margin-top:10px;font-size:.93rem">Así funcionan las tintas: cada pigmento absorbe parte de la luz y la mezcla se oscurece.</p></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>3 · Matiz, saturación y luminosidad</h3>
+    <div class="grid g2"><div>
+      <div class="slider"><label for="h">Matiz</label><input id="h" type="range" min="0" max="359" value="12"><output id="ho">12°</output></div>
+      <div class="slider"><label for="s">Saturación</label><input id="s" type="range" min="0" max="100" value="80"><output id="so">80 %</output></div>
+      <div class="slider"><label for="l">Luminosidad</label><input id="l" type="range" min="0" max="100" value="50"><output id="lo">50 %</output></div>
+      <p style="font-size:.93rem;margin-top:8px" id="hslTxt"></p>
+    </div><div><div class="big-sw" id="bigSw"></div><p style="margin-top:8px"><b id="hexOut"></b> <button class="btn ghost" id="copyHex" type="button">Copiar código</button></p></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>4 · Generador de armonías</h3>
+    <p>Elige un color base de la rueda y el tipo de armonía.</p>
+    <div class="toggles"><label for="hb">Color base</label><select id="hb"></select><label for="ht">Armonía</label><select id="ht"><option value="comp">Complementaria</option><option value="ana">Análoga</option><option value="tri">Triádica</option><option value="split">Complementaria dividida</option></select></div>
+    <div class="swrow" id="harm" style="margin-top:12px"></div>
+    <p style="margin-top:10px;font-size:.93rem" id="harmTxt"></p>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>5 · ¿Todos vemos la misma paleta?</h3>
+    <p>Simulación aproximada de cómo se ve la armonía de arriba con distintos tipos de daltonismo. Si dos colores se confunden, ajusta su luminosidad.</p>
+    <div id="sim"></div>
+  </div>
+</section>
+
+<!-- RETO -->
+<section class="view" id="v-reto">
+  <p class="eyebrow">Hipermedia para comprobar lo aprendido</p>
+  <h2>Reto transdisciplinar</h2>
+  <p>Ocho preguntas, una de cada campo. Si fallas, la explicación te dice adónde ir para repasar.</p>
+  <div id="quiz"></div>
+  <p class="score" id="score"></p>
+  <button class="btn ghost" id="resetQ" type="button">Reiniciar reto</button>
+</section>
+
+
+<!-- VIDEOTECA -->
+<section class="view" id="v-videoteca">
+  <p class="eyebrow">Hipermedia</p>
+  <h2>Videoteca</h2>
+  <p>Videos seleccionados para cada sesión. Cada uno trae una pregunta guía: respóndela en tu bitácora después de verlo. Filtra por sesión o por campo de conocimiento.</p>
+  <div class="filters" id="fSes" aria-label="Filtrar por sesión"></div>
+  <div class="filters" id="fCam" aria-label="Filtrar por campo"></div>
+  <div class="card" style="margin-bottom:16px"><b id="progTxt"></b><div class="prog"><div id="progBar"></div></div><span style="font-size:.85rem;color:var(--muted)">Marca los videos que ya viste. Se guarda solo en este navegador.</span></div>
+  <div class="grid g3" id="vgrid"></div>
+  <p style="font-size:.88rem;color:var(--muted);margin-top:16px">Los videos están alojados en YouTube y pertenecen a sus autores. El docente debe revisarlos antes de cada clase, porque un video puede cambiar o dejar de estar disponible.</p>
+</section>
+
+<!-- BIBLIOTECA -->
+<section class="view" id="v-biblioteca">
+  <p class="eyebrow">Multiplicidad de fuentes</p>
+  <h2>Biblioteca de fuentes</h2>
+  <p>Simuladores, herramientas, documentos oficiales y fuentes del territorio que apoyan el plan curricular. Cada fuente indica la sesión en la que se usa.</p>
+  <div class="filters" id="fTipo" aria-label="Filtrar por tipo"></div>
+  <div class="grid g2" id="bgrid"></div>
+</section>
+
+<!-- COMUNIDAD -->
+<section class="view" id="v-comunidad">
+  <p class="eyebrow">Comunidad de práctica</p>
+  <h2>Comunidad y bitácora</h2>
+  <p>En este curso aprendemos como una comunidad: compartimos un tema (el color), una práctica (experimentar y crear) y un espacio (el aula virtual). Cada sesión, un equipo distinto hace la curaduría de lo trabajado.</p>
+  <div class="grid g4">
+    <div class="card stripe" style="--c:#e1262b"><h3>Curador</h3><p>Selecciona las mejores producciones de la sesión y explica por qué.</p></div>
+    <div class="card stripe" style="--c:#f4c20d"><h3>Cronista</h3><p>Escribe un resumen breve de lo que el grupo descubrió.</p></div>
+    <div class="card stripe" style="--c:#2c3f9e"><h3>Enlazador</h3><p>Conecta lo nuevo con sesiones anteriores, con otras áreas y con este sitio.</p></div>
+    <div class="card stripe" style="--c:#2a9b48"><h3>Documentalista</h3><p>Toma fotos del proceso y las sube al aula virtual.</p></div>
+  </div>
+  <div class="tw" style="margin-top:18px"><table>
+    <tr><th>Sesión</th><th>Equipo curador</th><th>Publica en</th></tr>
+    <tr><td>1</td><td>Equipo A</td><td rowspan="4">Aula virtual del curso · <span class="pending">Enlace pendiente</span></td></tr>
+    <tr><td>2</td><td>Equipo B</td></tr><tr><td>3</td><td>Equipo C</td></tr><tr><td>4</td><td>Equipo D</td></tr>
+  </table></div>
+  <h3 style="margin-top:24px">Mi bitácora cromática</h3>
+  <p>Después de cada sesión, responde en tu bitácora (cuaderno o aula virtual):</p>
+  <ul class="clean"><li>¿Qué experimenté hoy y qué resultado obtuve?</li><li>¿Qué color o mezcla me sorprendió y por qué?</li><li>¿Qué aporte de un compañero o de mi familia cambió mi idea?</li><li>¿Con qué otra materia se conecta lo que aprendí?</li></ul>
+</section>
+
+<!-- EVALUACIÓN -->
+<section class="view" id="v-evaluacion">
+  <p class="eyebrow">Evaluación por evidencias progresivas</p>
+  <h2>¿Cómo se evalúa?</h2>
+  <div class="tpbar" aria-label="Peso de los trabajos prácticos"><div style="flex:20;background:#b8860b">TP1 · 20 %</div><div style="flex:20;background:#c0392b">TP2 · 20 %</div><div style="flex:20;background:#2c3f9e">TP3 · 20 %</div><div style="flex:40;background:#1f7a3a">TP4 · 40 %</div></div>
+  <p>Escala de valoración: <span class="chip">Superior 4</span><span class="chip">Alto 3</span><span class="chip">Básico 2</span><span class="chip">Bajo 1</span></p>
+  <details open><summary>TP1 · Rueda cromática colectiva y mapa del entorno (20 %)</summary><div class="tw"><table><tr><th>Criterio</th><th>Peso</th><th>Nivel superior</th></tr>
+    <tr><td>Comprensión conceptual</td><td class="num">35 %</td><td>Explica las categorías cromáticas y la diferencia entre luz y pigmento.</td></tr>
+    <tr><td>Construcción de la rueda</td><td class="num">30 %</td><td>Rueda completa, precisa y bien organizada.</td></tr>
+    <tr><td>Relación con el entorno</td><td class="num">20 %</td><td>Relaciona tres o más manifestaciones del contexto con su significado.</td></tr>
+    <tr><td>Trabajo en equipo</td><td class="num">15 %</td><td>Aporte equilibrado y visible de todos.</td></tr></table></div></details>
+  <details><summary>TP2 · Composición, narrativa y paleta accesible (20 %)</summary><div class="tw"><table><tr><th>Criterio</th><th>Peso</th><th>Nivel superior</th></tr>
+    <tr><td>Aplicación de propiedades</td><td class="num">35 %</td><td>Aplica matiz, saturación y luminosidad con intención expresiva.</td></tr>
+    <tr><td>Creatividad y expresión</td><td class="num">25 %</td><td>Propuesta original que comunica ideas y emociones.</td></tr>
+    <tr><td>Narrativa y argumentación</td><td class="num">25 %</td><td>Explica con claridad sus decisiones.</td></tr>
+    <tr><td>Retroalimentación a pares</td><td class="num">15 %</td><td>Comentarios respetuosos, específicos y fundamentados.</td></tr></table></div></details>
+  <details><summary>TP3 · Juego didáctico co-diseñado (20 %)</summary><div class="tw"><table><tr><th>Criterio</th><th>Peso</th><th>Nivel superior</th></tr>
+    <tr><td>Pertinencia conceptual</td><td class="num">30 %</td><td>Retos correctos y variados sobre armonías y contrastes.</td></tr>
+    <tr><td>Integración de campos</td><td class="num">30 %</td><td>Integra con sentido los cinco campos.</td></tr>
+    <tr><td>Funcionalidad y diseño</td><td class="num">20 %</td><td>Juego claro, atractivo y jugable por otros.</td></tr>
+    <tr><td>Colaboración y registro</td><td class="num">20 %</td><td>Registro completo del proceso y aporte equilibrado.</td></tr></table></div></details>
+  <details><summary>TP4 · Mural colaborativo + socialización (40 %)</summary><div class="tw"><table><tr><th>Criterio</th><th>Peso</th><th>Nivel superior</th></tr>
+    <tr><td>Aplicación cromática integrada</td><td class="num">25 %</td><td>Usa con dominio categorías, propiedades, armonías y contrastes.</td></tr>
+    <tr><td>Mensaje y cruce de saberes</td><td class="num">25 %</td><td>Mensaje claro que integra al menos tres campos.</td></tr>
+    <tr><td>Construcción colectiva</td><td class="num">25 %</td><td>Los aportes se integran en una obra coherente.</td></tr>
+    <tr><td>Socialización y metacognición</td><td class="num">25 %</td><td>Explica sus decisiones y reflexiona sobre su aprendizaje y su rol.</td></tr></table></div></details>
+  <p>Las rúbricas completas, con los cuatro niveles, están en el <span class="pending">plan curricular (enlace pendiente)</span>.</p>
+</section>
+
+<!-- METACOGNICIÓN -->
+<section class="view" id="v-metacognicion">
+  <p class="eyebrow">Metacognición</p>
+  <h2>Mi proceso de aprendizaje</h2>
+  <p>Pensar sobre cómo aprendo, con quién y qué rol cumplí. Marca cada afirmación.</p>
+  <div class="card check" id="checks"></div>
+  <p class="score" id="checkSum" style="margin-top:12px"></p>
+  <h3 style="margin-top:20px">Reflexión final</h3>
+  <label for="refl" style="display:block;margin-bottom:6px">¿Qué sabía del color antes, qué sé ahora y qué rol cumplí en el mural?</label>
+  <textarea id="refl" placeholder="Escribe aquí tu borrador. Se guarda solo en este navegador."></textarea>
+  <p><button class="btn" id="copyRefl" type="button">Copiar para pegar en la bitácora</button> <span id="copyMsg" style="font-size:.9rem;color:var(--muted)"></span></p>
+</section>
+
+<!-- FUNDAMENTOS -->
+<section class="view" id="v-fundamentos">
+  <p class="eyebrow">Para docentes y familias</p>
+  <h2>Fundamentos de la propuesta</h2>
+  <p>Este recurso aplica los conceptos del Módulo IV de la Maestría en Educación Virtual (Universidad de Nariño).</p>
+  <div class="grid g2">
+    <div class="card"><h3>Inteligencia colectiva</h3><p class="chip">Lévy, 2004</p><p>El saber sobre el color se construye entre todos: <a href="#comunidad">mapa del entorno, bitácora y mural</a>.</p></div>
+    <div class="card"><h3>Transposición didáctica</h3><p class="chip">Chevallard, 1991</p><p>La óptica, la biología de la visión y la colorimetría se adaptan a grado 9° en el <a href="#laboratorio">laboratorio</a>.</p></div>
+    <div class="card"><h3>Comunidades de práctica</h3><p class="chip">Wenger, 2001</p><p>Dominio, práctica y comunidad con <a href="#comunidad">roles rotativos de curaduría</a>.</p></div>
+    <div class="card"><h3>Ciberespacio y plataformas</h3><p class="chip">Negroponte, 1995 · Paz Saavedra y Beneth, 2026</p><p>Las herramientas se eligen por su valor pedagógico y se analizan críticamente: ¿qué permiten y qué limitan?</p></div>
+    <div class="card"><h3>Hipertexto y rizoma</h3><p class="chip">Landow, 1995 · Deleuze y Guattari, 1988</p><p>La <a href="#rueda">rueda hipertextual</a>: cada color es un nodo con enlaces y no hay un único camino.</p></div>
+    <div class="card"><h3>Transdisciplinariedad</h3><p class="chip">Nicolescu, 1996 · Morin, 1994</p><p>Niveles de realidad (físico, perceptivo, cultural) y el tercero incluido: el magenta no está en el arcoíris y sin embargo lo vemos.</p></div>
+    <div class="card"><h3>Modos de aprendizaje</h3><p class="chip">Elmore</p><p>Del aprendizaje dirigido e individual (sesión 1) al aprendizaje libre y colectivo (mural, sesión 4).</p></div>
+    <div class="card"><h3>Metacognición</h3><p class="chip">Sesión 4 del módulo</p><p>La <a href="#metacognicion">autoevaluación</a> pregunta qué aprendí, con quién y qué rol cumplí.</p></div>
+  </div>
+</section>
+
+<!-- RECURSOS -->
+<section class="view" id="v-recursos">
+  <p class="eyebrow">Hipervínculos</p>
+  <h2>Recursos y referencias</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Herramientas</h3><ul class="clean">
+      <li><a href="https://phet.colorado.edu/es/simulations/color-vision">PhET · Visión del color</a></li>
+      <li><a href="https://color.adobe.com/es/create/color-wheel">Adobe Color · rueda y accesibilidad</a></li>
+      <li><a href="https://www.canva.com">Canva</a></li>
+      <li><a href="https://genially.com">Genially</a></li></ul></div>
+    <div class="card"><h3>Patrimonio de Nariño</h3><ul class="clean">
+      <li><a href="https://ich.unesco.org/es/RL/carnaval-de-negros-y-blancos-00287">Carnaval de Negros y Blancos (UNESCO, 2009)</a></li>
+      <li><a href="https://ich.unesco.org/es/USL/01599">Barniz de Pasto mopa-mopa (UNESCO, 2020)</a></li></ul></div>
+    <div class="card"><h3>Documentos curriculares</h3><ul class="clean">
+      <li><a href="https://www.mineducacion.gov.co/1621/article-241907.html">MEN · Orientaciones pedagógicas para la Educación Artística (Doc. 16)</a></li>
+      <li><a href="https://www.mineducacion.gov.co/1780/articles-411706_recurso_2.pdf">MEN · Orientaciones curriculares para la educación artística y cultural</a></li></ul></div>
+    <div class="card"><h3>Productos del TP4</h3><ul class="clean">
+      <li>Plan curricular hipertextualizado · <span class="pending">enlace pendiente</span></li>
+      <li>Guía educativa hipertextual · <span class="pending">enlace pendiente</span></li>
+      <li>Video de sustentación · <span class="pending">enlace pendiente</span></li></ul></div>
+  </div>
+  <h3 style="margin-top:22px">Referencias</h3>
+  <ul class="clean" style="font-size:.93rem">
+    <li>Albers, J. (2010). <i>La interacción del color</i>. Alianza.</li>
+    <li>Chevallard, Y. (1991). <i>La transposición didáctica</i>. Aique.</li>
+    <li>Heller, E. (2004). <i>Psicología del color</i>. Gustavo Gili.</li>
+    <li>Itten, J. (2002). <i>El arte del color</i>. Bouret.</li>
+    <li>Landow, G. P. (1995). <i>Hipertexto</i>. Paidós.</li>
+    <li>Lévy, P. (2004). <i>Inteligencia colectiva</i>. OPS.</li>
+    <li>Nicolescu, B. (1996). <i>La transdisciplinariedad: manifiesto</i>. Du Rocher.</li>
+    <li>Paz Saavedra, L. E. y Beneth Benavides, J. A. (2026). Las unidades de integración de tecnologías digitales en la educación… <i>Edutec</i>. <a href="https://doi.org/10.21556/edutec.2026.96.4363">doi.org/10.21556/edutec.2026.96.4363</a></li>
+    <li>Wenger, E. (2001). <i>Comunidades de práctica</i>. Paidós.</li>
+  </ul>
+</section>
+
+<footer>Rizoma de Color · Recurso hipermedia del TP4 · Módulo IV, Pista 1 · Maestría en Educación Virtual, Universidad de Nariño · Grupo B · 2026</footer>
+</main>
+</div>
+
+<script>
+const store={get(k){try{return localStorage.getItem(k)}catch(_){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
+// ---------- Datos de la rueda (Itten, 12 colores) ----------
+const W = [
+ {n:'Amarillo',hex:'#F4C20D',cat:'Primario',fis:'Luz de unos 570–590 nm. En pantalla se obtiene sumando luz roja y verde.',per:'Estimula con fuerza los conos de onda larga y media: por eso es el color que percibimos más luminoso.',cul:'Según Heller, en Occidente se asocia con el optimismo y la alegría, pero también con la envidia. Búscalo en las carrozas del Carnaval.'},
+ {n:'Amarillo anaranjado',hex:'#F7A21B',cat:'Terciario',fis:'Luz cercana a 590 nm, en la frontera entre amarillo y naranja.',per:'El ojo lo percibe cálido y muy visible.',cul:'Color de cosecha y de frutas maduras de la plaza de mercado.'},
+ {n:'Naranja',hex:'#F28C1B',cat:'Secundario',fis:'Luz de unos 590–620 nm. En pigmento: amarillo + rojo.',per:'Activa sobre todo los conos de onda larga; es el color cálido por excelencia.',cul:'Heller lo vincula con la diversión y la sociabilidad. Aparece en señales de alerta y chalecos de seguridad.'},
+ {n:'Rojo anaranjado',hex:'#EA5A1F',cat:'Terciario',fis:'Luz cercana a 620 nm.',per:'Muy saturado y llamativo para el ojo.',cul:'Frecuente en el fuego y en las hojas secas: un color de energía.'},
+ {n:'Rojo',hex:'#E1262B',cat:'Primario',fis:'Luz de unos 620–750 nm: el extremo largo del espectro visible.',per:'Lo detectan los conos L (de onda larga). Parece acercarse al espectador.',cul:'Para Heller es el color de la pasión, el amor y el peligro. En el Barniz de Pasto el rojo intenso es protagonista.'},
+ {n:'Rojo violeta',hex:'#B5245E',cat:'Terciario',fis:'No existe como una sola longitud de onda: mezcla luz roja y azul.',per:'El cerebro lo construye a partir de los dos extremos del espectro.',cul:'Tonos de flores andinas y de tejidos tradicionales.'},
+ {n:'Violeta',hex:'#8E2A8B',cat:'Secundario',fis:'Luz de unos 380–450 nm en el extremo corto del espectro. En pigmento: rojo + azul.',per:'Los conos S (onda corta) son los menos numerosos, por eso los violetas oscuros cuestan distinguirlos.',cul:'Heller lo asocia con el poder, la magia y la ambigüedad. En muchas culturas fue color de realeza.'},
+ {n:'Azul violeta',hex:'#4B3A9E',cat:'Terciario',fis:'Luz cercana a 450 nm.',per:'Se percibe frío y profundo.',cul:'Color del cielo al anochecer sobre el Galeras.'},
+ {n:'Azul',hex:'#2C3F9E',cat:'Primario',fis:'Luz de unos 450–495 nm. El cielo es azul porque la atmósfera dispersa más esta luz.',per:'Lo detectan los conos S. Parece alejarse del espectador.',cul:'Según Heller, es el color preferido en las encuestas y se asocia con la calma, la confianza y la lejanía.'},
+ {n:'Azul verde',hex:'#1B8A8F',cat:'Terciario',fis:'Luz cercana a 490–500 nm (cian).',per:'Combina la respuesta de conos S y M.',cul:'Color del agua en lagunas como La Cocha.'},
+ {n:'Verde',hex:'#2A9B48',cat:'Secundario',fis:'Luz de unos 495–570 nm. En pigmento: amarillo + azul. En pantalla es un primario de luz.',per:'El ojo humano es más sensible al verde que a cualquier otro color.',cul:'Heller lo vincula con la naturaleza y la esperanza. Domina el paisaje de Nariño y el mopa-mopa crece en la selva del Putumayo.'},
+ {n:'Amarillo verdoso',hex:'#8CC63F',cat:'Terciario',fis:'Luz cercana a 560–570 nm.',per:'Muy luminoso; el ojo lo distingue con facilidad.',cul:'Brotes nuevos y cultivos jóvenes: un color de crecimiento.'},
+];
+const hexToRgb=h=>{h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16))};
+const textOn=h=>{const [r,g,b]=hexToRgb(h);return (0.299*r+0.587*g+0.114*b)>150?'#16182b':'#ffffff'};
+const rel=i=>({comp:[(i+6)%12],ana:[(i+11)%12,(i+1)%12],tri:[(i+4)%12,(i+8)%12],split:[(i+5)%12,(i+7)%12]});
+
+// ---------- Logo ----------
+(function(){const c=document.getElementById('logo'),x=c.getContext('2d');for(let i=0;i<12;i++){x.beginPath();x.moveTo(42,42);x.arc(42,42,40,(i/12)*2*Math.PI-Math.PI/2,((i+1)/12)*2*Math.PI-Math.PI/2);x.closePath();x.fillStyle=W[i].hex;x.fill();}x.beginPath();x.arc(42,42,15,0,2*Math.PI);x.fillStyle=getComputedStyle(document.body).backgroundColor;x.fill();})();
+
+// ---------- Rueda SVG ----------
+const svg=document.getElementById('wheel');let sel=0;
+function arc(i,r1,r2){const a0=(i/12)*2*Math.PI-Math.PI/2-Math.PI/12,a1=a0+2*Math.PI/12;const p=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];const [x0,y0]=p(r2,a0),[x1,y1]=p(r2,a1),[x2,y2]=p(r1,a1),[x3,y3]=p(r1,a0);return `M${x0},${y0} A${r2},${r2} 0 0 1 ${x1},${y1} L${x2},${y2} A${r1},${r1} 0 0 0 ${x3},${y3}Z`}
+W.forEach((c,i)=>{const r1=c.cat==='Primario'?40:c.cat==='Secundario'?80:120;const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',arc(i,r1,190));p.setAttribute('fill',c.hex);p.setAttribute('tabindex','0');p.setAttribute('role','button');p.setAttribute('aria-label',c.n+', '+c.cat);p.style.transformOrigin='0 0';p.addEventListener('click',()=>show(i));p.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show(i)}});svg.appendChild(p)});
+const t=document.createElementNS('http://www.w3.org/2000/svg','circle');t.setAttribute('r','34');t.setAttribute('fill','var(--surface)');svg.appendChild(t);
+function linkBtn(j,label){return `<button type="button" data-j="${j}"><i style="background:${W[j].hex}"></i>${label}: ${W[j].n}</button>`}
+function show(i){sel=i;[...svg.querySelectorAll('path')].forEach((p,k)=>p.classList.toggle('sel',k===i));const c=W[i],[r,g,b]=hexToRgb(c.hex),R=rel(i);
+ document.getElementById('panel').innerHTML=`<div class="panel-sw" style="background:${c.hex}"></div><p class="eyebrow">${c.cat}</p><h3>${c.n}</h3>
+ <div class="levels"><div class="lvl" style="border-color:#2c3f9e"><h4>Nivel físico · la luz</h4><p>${c.fis}</p></div>
+ <div class="lvl" style="border-color:#2a9b48"><h4>Nivel perceptivo · el ojo</h4><p>${c.per}</p></div>
+ <div class="lvl" style="border-color:#e1262b"><h4>Nivel cultural · el símbolo</h4><p>${c.cul}</p></div>
+ <div class="lvl" style="border-color:#f4c20d"><h4>Nivel digital · el código</h4><p>HEX ${c.hex} · RGB(${r}, ${g}, ${b})</p></div></div>
+ <p style="margin:14px 0 6px"><b>Enlaces de este nodo</b></p><div class="links-row">${linkBtn(R.comp[0],'Complementario')}${R.ana.map(j=>linkBtn(j,'Análogo')).join('')}${R.tri.map(j=>linkBtn(j,'Triádico')).join('')}</div>
+ <p style="font-size:.9rem;margin-top:8px">Prueba esta armonía en el <a href="#laboratorio" data-lab="${i}">laboratorio</a>.</p>`;
+ document.querySelectorAll('#panel [data-j]').forEach(b=>b.addEventListener('click',()=>show(+b.dataset.j)));
+ const lab=document.querySelector('#panel [data-lab]');lab.addEventListener('click',()=>{hb.value=i;renderHarm()});}
+show(4);
+
+// ---------- Laboratorio ----------
+function bindMix(tog,mix){document.querySelectorAll('#'+tog+' input').forEach(inp=>inp.addEventListener('change',()=>{document.querySelectorAll('#'+mix+' span')[inp.dataset.i].style.opacity=inp.checked?1:0}))}
+bindMix('togL','mixL');bindMix('togP','mixP');
+const H=document.getElementById('h'),S=document.getElementById('s'),Lm=document.getElementById('l');
+function hslToHex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return '#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('').toUpperCase()}
+function renderHSL(){const h=+H.value,s=+S.value,l=+Lm.value;document.getElementById('ho').textContent=h+'°';document.getElementById('so').textContent=s+' %';document.getElementById('lo').textContent=l+' %';const hx=hslToHex(h,s,l);document.getElementById('bigSw').style.background=hx;document.getElementById('hexOut').textContent=hx;
+ const temp=(h<75||h>=330)?'cálido':(h>=150&&h<300)?'frío':'de transición';const sat=s<25?'apagado, casi gris':s<60?'moderado':'intenso';const lum=l<25?'muy oscuro (una sombra)':l>80?'muy claro (un tinte)':'de luminosidad media';
+ document.getElementById('hslTxt').textContent=`Este color es ${temp}, ${sat} y ${lum}. Mueve la saturación a 0 y observa cómo desaparece el matiz.`}
+[H,S,Lm].forEach(x=>x.addEventListener('input',renderHSL));renderHSL();
+document.getElementById('copyHex').addEventListener('click',async e=>{try{await navigator.clipboard.writeText(document.getElementById('hexOut').textContent);e.target.textContent='Copiado'}catch(_){e.target.textContent='Cópialo a mano'}setTimeout(()=>e.target.textContent='Copiar código',1600)});
+const hb=document.getElementById('hb'),ht=document.getElementById('ht');
+W.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.n;hb.appendChild(o)});hb.value=4;
+const expl={comp:'Colores opuestos en la rueda: máximo contraste. Úsalos para destacar un elemento.',ana:'Colores vecinos: armonía tranquila y unificada.',tri:'Tres colores a igual distancia: contraste equilibrado y vivo.',split:'El color base con los dos vecinos de su complementario: contraste con menos tensión.'};
+function renderHarm(){const i=+hb.value,set=[i,...rel(i)[ht.value]];document.getElementById('harm').innerHTML=set.map(j=>`<div class="sw" style="background:${W[j].hex};color:${textOn(W[j].hex)}">${W[j].n}<br>${W[j].hex}</div>`).join('');document.getElementById('harmTxt').textContent=expl[ht.value];
+ const strip=set.map(j=>`<div style="background:${W[j].hex}"></div>`).join('');
+ document.getElementById('sim').innerHTML=[['Visión típica',''],['Protanopia','url(#f-prot)'],['Deuteranopia','url(#f-deut)'],['Tritanopia','url(#f-trit)']].map(([n,f])=>`<div class="sim-row"><span style="font-size:.92rem">${n}</span><div class="swrow" style="filter:${f||'none'}">${strip}</div></div>`).join('')}
+hb.addEventListener('change',renderHarm);ht.addEventListener('change',renderHarm);renderHarm();
+
+// ---------- Reto ----------
+const Q=[
+ {c:'Artes',q:'¿Cuáles son los colores primarios en la rueda tradicional de pigmentos?',o:['Rojo, amarillo y azul','Rojo, verde y azul','Naranja, violeta y verde'],a:0,e:'En pigmentos (rueda de Itten) son rojo, amarillo y azul. Rojo, verde y azul son los primarios de la luz. Repasa en la <a href="#rueda">rueda</a>.'},
+ {c:'Física',q:'Si encendemos luces roja, verde y azul en el mismo punto, ¿qué color vemos?',o:['Negro','Blanco','Café'],a:1,e:'La mezcla de luz es aditiva: las tres luces juntas dan blanco. Compruébalo en el <a href="#laboratorio">laboratorio</a>.'},
+ {c:'Física',q:'¿Por qué al mezclar muchas pinturas el resultado se oscurece?',o:['Porque cada pigmento absorbe parte de la luz','Porque la pintura se seca','Porque el ojo se cansa'],a:0,e:'La mezcla de pigmentos es sustractiva: cada uno resta luz. Mira la mezcla CMY del <a href="#laboratorio">laboratorio</a>.'},
+ {c:'Biología',q:'¿Qué células del ojo nos permiten distinguir colores?',o:['Los bastones','Los conos','Las pupilas'],a:1,e:'Los conos (de onda larga, media y corta) perciben el color. Los bastones funcionan con poca luz. Repasa el nivel perceptivo en la <a href="#rueda">rueda</a>.'},
+ {c:'Biología',q:'¿Qué conviene hacer para que una paleta funcione para personas con daltonismo?',o:['Usar solo rojo y verde','Variar también la luminosidad entre colores','Usar colores muy saturados'],a:1,e:'Si los colores se diferencian también por luminosidad, se distinguen aunque el matiz se confunda. Pruébalo en el simulador del <a href="#laboratorio">laboratorio</a>.'},
+ {c:'Artes',q:'¿Cuál es el complementario del azul en la rueda tradicional?',o:['Verde','Violeta','Naranja'],a:2,e:'Los complementarios están opuestos en la rueda: azul y naranja. Sigue el enlace “Complementario” en la <a href="#rueda">rueda</a>.'},
+ {c:'Cultura',q:'¿Qué reconoce la UNESCO del Barniz de Pasto mopa-mopa?',o:['Los conocimientos y técnicas tradicionales asociados a él','Solo los objetos terminados','Un estilo de pintura al óleo'],a:0,e:'La UNESCO inscribió en 2020 los conocimientos y técnicas tradicionales: recolección del mopa-mopa, talla de la madera y barnizado. Ve a <a href="#recursos">recursos</a>.'},
+ {c:'Tecnología',q:'En el código HEX #FF0000, ¿qué color se muestra en pantalla?',o:['Azul','Rojo','Verde'],a:1,e:'El código HEX va en orden rojo, verde, azul: FF es el máximo de rojo y 00 es nada de verde ni de azul. Mira los códigos en la <a href="#rueda">rueda</a>.'},
+];
+const quiz=document.getElementById('quiz');let answered={};
+function renderQuiz(){answered={};quiz.innerHTML=Q.map((q,k)=>`<div class="card q"><p class="eyebrow">${k+1} · ${q.c}</p><b>${q.q}</b><div class="opts">${q.o.map((o,j)=>`<button type="button" data-k="${k}" data-j="${j}">${o}</button>`).join('')}</div><div class="fb" id="fb${k}"></div></div>`).join('');
+ quiz.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const k=+b.dataset.k,j=+b.dataset.j;if(k in answered)return;answered[k]=j===Q[k].a;quiz.querySelectorAll(`button[data-k="${k}"]`).forEach(x=>{x.disabled=true;if(+x.dataset.j===Q[k].a)x.classList.add('ok')});if(j!==Q[k].a)b.classList.add('no');document.getElementById('fb'+k).innerHTML=(j===Q[k].a?'<b>¡Correcto!</b> ':'<b>Casi.</b> ')+Q[k].e;upd()}));upd()}
+function upd(){const n=Object.keys(answered).length,ok=Object.values(answered).filter(Boolean).length;document.getElementById('score').textContent=n?`Llevas ${ok} de ${n} correctas${n===Q.length?' · ¡Reto completo!':''}`:'Responde las preguntas para ver tu puntaje.'}
+document.getElementById('resetQ').addEventListener('click',renderQuiz);renderQuiz();
+
+// ---------- Metacognición ----------
+const C=['Comprendo los conceptos fundamentales de la teoría del color.','Diferencio la mezcla de luz de la mezcla de pigmentos.','Reconozco y aplico el matiz, la saturación y la luminosidad.','Uso la rueda para combinar colores con armonía y contraste.','Relaciono el color con la ciencia, la cultura y la tecnología.','Expreso ideas y emociones en mis creaciones.','Aporto al trabajo del grupo y respeto las producciones de mis compañeros.'];
+
+const checks=document.getElementById('checks');
+checks.innerHTML=C.map((c,i)=>`<label for="c${i}"><span>${c}</span><select id="c${i}"><option value="">Elegir</option><option value="2">Sí</option><option value="1">En proceso</option><option value="0">Necesito mejorar</option></select></label>`).join('');
+function sumC(){const v=C.map((_,i)=>document.getElementById('c'+i).value);const done=v.filter(x=>x!=='');const yes=v.filter(x=>x==='2').length,proc=v.filter(x=>x==='1').length,imp=v.filter(x=>x==='0').length;document.getElementById('checkSum').textContent=done.length?`Sí: ${yes} · En proceso: ${proc} · Necesito mejorar: ${imp}`:'';}
+C.forEach((_,i)=>{const s=document.getElementById('c'+i);const v=store.get('tc-c'+i);if(v!==null)s.value=v;s.addEventListener('change',()=>{store.set('tc-c'+i,s.value);sumC()})});sumC();
+const refl=document.getElementById('refl');refl.value=store.get('tc-refl')||'';refl.addEventListener('input',()=>store.set('tc-refl',refl.value));
+document.getElementById('copyRefl').addEventListener('click',async()=>{const m=document.getElementById('copyMsg');try{await navigator.clipboard.writeText(refl.value);m.textContent='Copiado. Pégalo en tu bitácora.'}catch(_){m.textContent='No se pudo copiar: selecciona el texto y cópialo a mano.'}});
+
+
+// ---------- Videoteca ----------
+const CAMPOS={Arte:'#e1262b',Física:'#2c3f9e',Biología:'#2a9b48',Cultura:'#f28c1b',Tecnología:'#8e2a8b'};
+const V=[
+ {id:'b5xDwtMa2Tg',t:'Espectro de luz visible: dispersión de la luz blanca',f:'Demostración experimental basada en el prisma de Newton',s:1,c:'Física',q:'¿Qué colores aparecen al descomponer la luz blanca y en qué orden?'},
+ {id:'FfbG1ieuTB0',t:'Teoría aditiva y sustractiva del color, explicada',f:'Explicación breve, unos 3 minutos',s:1,c:'Física',q:'¿Por qué la pantalla de tu celular usa luz roja, verde y azul, y la impresora usa cian, magenta y amarillo?'},
+ {id:'cGuPMagdEcs',t:'Círculo cromático: cómo mezclar colores',f:'Colores primarios, secundarios y terciarios',s:1,c:'Arte',q:'¿Qué dos primarios necesitas para obtener cada secundario?'},
+ {id:'zoLx1bOj8lA',t:'El Carnaval de Negros y Blancos, una fiesta para celebrar la unidad',f:'France 24 Español',s:1,c:'Cultura',q:'¿Qué significan el negro y el blanco en el Carnaval? ¿Qué otros colores dominan las carrozas?'},
+ {id:'a1AN8tX1IjU',t:'Propiedades del color: tono, valor y saturación',f:'Clase de un curso universitario de teoría del color',s:2,c:'Arte',q:'Explica con tus palabras la diferencia entre saturación y luminosidad.'},
+ {id:'mmdQQyE14wc',t:'Cómo vemos los colores: el trabajo de conos y bastones',f:'Divulgación científica',s:2,c:'Biología',q:'¿Qué hacen los conos y qué hacen los bastones? ¿Cuál trabaja de noche?'},
+ {id:'K8me2MUZn0M',t:'Daltonismo, la percepción de los colores',f:'Microdocumental de menos de 3 minutos',s:2,c:'Biología',q:'¿Qué combinaciones de colores evitarías en un cartel para que todos lo lean?'},
+ {id:'eqe68OZ9Smw',t:'Colores complementarios, análogos y combinaciones monocromáticas',f:'Armonías del color',s:3,c:'Arte',q:'Elige un color de tu mapa del entorno y nombra su complementario y sus análogos.'},
+ {id:'ke5R_HFYoGU',t:'Los 7 contrastes en el color',f:'Los contrastes de Johannes Itten',s:3,c:'Arte',q:'¿Cuál de los siete contrastes ves en el Carnaval o en una pieza de Barniz de Pasto?'},
+ {id:'uuxoCwgM-dY',t:'RGB Color and Hex (versión corta)',f:'En inglés, con subtítulos automáticos',s:3,c:'Tecnología',q:'¿Qué color da el código #00FF00? ¿Por qué?'},
+ {id:'lrWkkSkQVR0',t:'Barniz de Pasto mopa-mopa: conocimientos y técnicas tradicionales',f:'UNESCO · Lista de salvaguardia urgente 2020',s:3,c:'Cultura',q:'¿Cuáles son los tres oficios que participan en una pieza de Barniz de Pasto?'},
+ {id:'p6Z4lpTCyhA',t:'Técnica del Barniz de Pasto “mopa-mopa”',f:'El maestro Eduardo Muñoz Lora muestra el proceso',s:3,c:'Cultura',q:'¿Cómo se obtienen y se aplican los colores en el barniz? Compáralo con mezclar pintura.'},
+ {id:'V0TyO39zGy8',t:'Saberes Artesanales: Barniz de Pasto (tráiler)',f:'Universidad del Rosario y Artesanías de Colombia',s:3,c:'Cultura',q:'¿Por qué es importante que los jóvenes aprendan este oficio?'},
+ {id:'NpKLb3k6uWM',t:'Psicología del color, de Eva Heller',f:'Reseña del libro',s:4,c:'Cultura',q:'¿Qué emoción quieres comunicar en tu sector del mural y qué colores la expresan?'},
+ {id:'7bJU2oYmW4U',t:'Mural comunitario en Don Bosco, Medellín',f:'Jóvenes de la corporación Proyectarte',s:4,c:'Arte',q:'¿Cómo se organizaron los participantes para pintar juntos? ¿Qué podemos copiar?'},
+ {id:'NYq1tc1x50w',t:'Un mural como construcción colectiva',f:'Estudiantes de la Facultad de Arte de la UPLA',s:4,c:'Arte',q:'¿Qué decisiones tuvo que tomar el grupo antes de empezar a pintar?'},
+];
+const EMBED=!/claude/i.test(location.hostname)&&location.protocol.startsWith('http');
+const seen={};V.forEach(v=>{seen[v.id]=store.get('tc-v-'+v.id)==='1'});
+let fS='all',fC='all';
+function ytUrl(id){return 'https://www.youtube.com/watch?v='+id}
+function renderV(){const g=document.getElementById('vgrid');const list=V.filter(v=>(fS==='all'||v.s==fS)&&(fC==='all'||v.c===fC));
+ g.innerHTML=list.length?list.map(v=>`<article class="vcard"><div class="vthumb" style="--g:linear-gradient(135deg,${CAMPOS[v.c]},#16182b)" id="th-${v.id}">${EMBED?`<img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">`:''}<span>Sesión ${v.s} · ${v.c}</span></div>
+ <div class="vbody"><h3>${v.t}</h3><div class="vmeta">${v.f}</div><div class="vq"><b>Pregunta guía:</b> ${v.q}</div>
+ <div class="vact">${EMBED?`<button class="btn" type="button" data-play="${v.id}">Ver aquí</button>`:''}<a class="btn ${EMBED?'ghost':''}" href="${ytUrl(v.id)}" target="_blank" rel="noopener">Ver en YouTube</a><label><input type="checkbox" data-seen="${v.id}" ${seen[v.id]?'checked':''}> Visto</label></div></div></article>`).join(''):'<p>No hay videos con ese filtro.</p>';
+ g.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.play;document.getElementById('th-'+id).innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1" title="Video" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;b.remove()}));
+ g.querySelectorAll('[data-seen]').forEach(c=>c.addEventListener('change',()=>{seen[c.dataset.seen]=c.checked;store.set('tc-v-'+c.dataset.seen,c.checked?'1':'0');prog()}));prog()}
+function prog(){const n=V.filter(v=>seen[v.id]).length;document.getElementById('progTxt').textContent=`Has visto ${n} de ${V.length} videos`;document.getElementById('progBar').style.width=(100*n/V.length)+'%'}
+function chips(el,opts,cur,cb){el.innerHTML=opts.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${v==cur}">${l}</button>`).join('');el.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v)}))}
+chips(document.getElementById('fSes'),[['all','Todas las sesiones'],['1','Sesión 1'],['2','Sesión 2'],['3','Sesión 3'],['4','Sesión 4']],'all',v=>{fS=v;renderV()});
+chips(document.getElementById('fCam'),[['all','Todos los campos'],...Object.keys(CAMPOS).map(k=>[k,k])],'all',v=>{fC=v;renderV()});
+renderV();
+
+// ---------- Biblioteca ----------
+const SRC=[
+ {t:'Simulador',n:'PhET · Visión del color',u:'https://phet.colorado.edu/es/simulations/color-vision',d:'Simulación de la Universidad de Colorado para mezclar luces roja, verde y azul y cambiar la longitud de onda.',s:[1]},
+ {t:'Documento',n:'NASA Science · Visible Light',u:'https://science.nasa.gov/ems/09_visiblelight/',d:'La luz visible dentro del espectro electromagnético (en inglés).',s:[1]},
+ {t:'Documento',n:'Wikipedia · Círculo cromático',u:'https://es.wikipedia.org/wiki/C%C3%ADrculo_crom%C3%A1tico',d:'Historia y modelos del círculo cromático, de Newton a Itten. Para contrastar con otras fuentes.',s:[1,3]},
+ {t:'Herramienta',n:'Adobe Color · Rueda de color',u:'https://color.adobe.com/es/create/color-wheel',d:'Genera armonías y revisa la paleta con simulación de daltonismo y contraste.',s:[2,3]},
+ {t:'Herramienta',n:'Coblis · Simulador de daltonismo',u:'https://www.color-blindness.com/coblis-color-blindness-simulator/',d:'Sube una foto de tu composición y mírala como la vería una persona con daltonismo.',s:[2]},
+ {t:'Herramienta',n:'Coolors · Generador de paletas',u:'https://coolors.co/',d:'Crea paletas, extrae colores de una foto y revisa el contraste entre texto y fondo.',s:[2,3]},
+ {t:'Herramienta',n:'Canva',u:'https://www.canva.com',d:'Rueda cromática digital, composiciones y la versión interactiva del mural.',s:[1,4]},
+ {t:'Herramienta',n:'Genially',u:'https://genially.com',d:'Imagen interactiva del mural con puntos que enlazan a la bitácora.',s:[4]},
+ {t:'Libro',n:'Albers · Interaction of Color (app de Yale)',u:'https://designcop.yale.edu/node/21',d:'Versión interactiva para iPad del libro de Josef Albers sobre la interacción del color.',s:[2]},
+ {t:'Patrimonio',n:'UNESCO · Carnaval de Negros y Blancos',u:'https://ich.unesco.org/es/RL/carnaval-de-negros-y-blancos-00287',d:'Ficha oficial del Carnaval en la Lista Representativa del Patrimonio Cultural Inmaterial (2009).',s:[1]},
+ {t:'Patrimonio',n:'UNESCO · Barniz de Pasto mopa-mopa',u:'https://ich.unesco.org/es/USL/01599',d:'Ficha de los conocimientos y técnicas tradicionales, inscritos en 2020 en la lista de salvaguardia urgente.',s:[3]},
+ {t:'Patrimonio',n:'Barniz de Pasto mopa-mopa: una gran familia',u:"https://ich.unesco.org/doc/src/Book_'Pasto_Varnish_mopa-mopa,_a_big_family'.pdf",d:'Publicación bilingüe del proyecto de salvaguardia apoyado por la UNESCO, con la vida de maestros y recolectores (PDF).',s:[3]},
+ {t:'Patrimonio',n:'Plan Especial de Salvaguardia del Barniz de Pasto',u:'https://patrimonio.mincultura.gov.co/Documents/PES%20BARNIZ%20MOPA%20MOPA.pdf',d:'Documento del Ministerio de Cultura con la historia y la ubicación geográfica del oficio (PDF).',s:[3]},
+ {t:'Patrimonio',n:'MinTIC · Estampillas del Carnaval y del Barniz de Pasto',u:'https://mintic.gov.co/portal/inicio/Sala-de-prensa/Noticias/198612:Con-serie-de-10-estampillas-conmemorativas-MinTIC-enaltece-el-Carnaval-de-Negros-y-Blancos-y-las-tecnicas-del-Barniz-de-Pasto',d:'Noticia sobre la serie filatélica; describe los tres eslabones del oficio del barniz.',s:[1,3]},
+ {t:'Currículo',n:'MEN · Orientaciones pedagógicas para la Educación Artística (Doc. 16)',u:'https://www.mineducacion.gov.co/1621/article-241907.html',d:'Referente nacional de las competencias de sensibilidad, apreciación estética y comunicación.',s:[1,2,3,4]},
+ {t:'Currículo',n:'MEN · Orientaciones curriculares para la educación artística y cultural',u:'https://www.mineducacion.gov.co/1780/articles-411706_recurso_2.pdf',d:'Orientaciones con enfoque crítico e intercultural (PDF).',s:[1,2,3,4]},
+ {t:'Artículo',n:'Paz Saavedra y Beneth Benavides (2026) · Edutec',u:'https://doi.org/10.21556/edutec.2026.96.4363',d:'Unidades de integración de tecnologías digitales y ecosistema tecnológico. Fundamenta el uso crítico de plataformas.',s:[2]},
+ {t:'Artículo',n:'Zamora-Araya (2019) · Transdisciplinariedad: de Nicolescu a Morin',u:'https://revistas.una.ac.cr/index.php/ensayospedagogicos/article/view/13063/18156',d:'Ensayo sobre transdisciplinariedad y pensamiento complejo en educación.',s:[4]},
+];
+const TIPOS=['Simulador','Herramienta','Documento','Libro','Patrimonio','Currículo','Artículo'];let fT='all';
+function renderB(){const g=document.getElementById('bgrid');const tipos=fT==='all'?TIPOS:[fT];
+ g.innerHTML=tipos.map(tp=>{const items=SRC.filter(x=>x.t===tp);if(!items.length)return'';return `<div class="card"><h3>${tp}${tp==='Patrimonio'?' de Nariño':''}</h3>${items.map(x=>`<div class="src"><span class="tag">S${x.s.join(', ')}</span><a href="${x.u}" target="_blank" rel="noopener">${x.n}</a><p>${x.d}</p></div>`).join('')}</div>`}).join('')}
+chips(document.getElementById('fTipo'),[['all','Todas'],...TIPOS.map(t=>[t,t])],'all',v=>{fT=v;renderB()});renderB();
+
+// ---------- Medios por sesión ----------
+['1','2','3','4'].forEach(n=>{document.getElementById('sv'+n).innerHTML=V.filter(v=>v.s==n).map(v=>`<li><i aria-hidden="true"></i><span><a href="${ytUrl(v.id)}" target="_blank" rel="noopener">${v.t}</a> <span class="vmeta">· ${v.c}</span></span></li>`).join('');
+ document.getElementById('sf'+n).innerHTML=SRC.filter(x=>x.s.includes(+n)&&x.t!=='Currículo').slice(0,5).map(x=>`<li><a href="${x.u}" target="_blank" rel="noopener">${x.n}</a></li>`).join('')});
+
+// ---------- Navegación por hash ----------
+const views=['inicio','plan','sesiones','rueda','laboratorio','reto','videoteca','biblioteca','comunidad','evaluacion','metacognicion','fundamentos','recursos'];
+function route(){let h=location.hash.replace('#','');if(!views.includes(h))h='inicio';views.forEach(v=>document.getElementById('v-'+v).classList.toggle('on',v===h));document.querySelectorAll('nav.side a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+h));if(document.querySelector('nav.side a[aria-current]'))document.querySelector('nav.side a[aria-current]').setAttribute('aria-current','page');document.getElementById('side').classList.remove('open');window.scrollTo(0,0)}
+window.addEventListener('hashchange',route);route();
+document.getElementById('menuBtn').addEventListener('click',e=>{const s=document.getElementById('side');s.classList.toggle('open');e.target.setAttribute('aria-expanded',s.classList.contains('open'))});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));document.querySelectorAll('.sess').forEach(s=>s.classList.toggle('on',s.id==='s'+b.dataset.s))}));
+</script>
+</body>
+</html>
